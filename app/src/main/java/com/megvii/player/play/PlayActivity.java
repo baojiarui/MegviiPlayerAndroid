@@ -10,14 +10,24 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
+import com.google.gson.Gson;
+import com.megvii.player.ApiConfig;
 import com.megvii.player.R;
+import com.megvii.player.model.ChannelStream;
 import com.megvii.player.model.SwitchVideoModel;
 import com.megvii.player.video.SampleVideo;
 import com.shuyu.gsyvideoplayer.GSYVideoManager;
 import com.shuyu.gsyvideoplayer.utils.OrientationUtils;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * 单独的视频播放页面
@@ -28,6 +38,12 @@ public class PlayActivity extends AppCompatActivity {
 
     private SampleVideo videoPlayer;
     private OrientationUtils orientationUtils;
+
+    private final OkHttpClient okHttpClient = new OkHttpClient();
+    /**心跳控制*/
+    private Handler heartHandler = new Handler();
+    /**心跳时间*/
+    private long heartbeatTime = 1000 * 5;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +56,7 @@ public class PlayActivity extends AppCompatActivity {
 
         String url = getIntent().getStringExtra(INTENT_KEY_URL);
         initPlayer(url);
+        heartbeat();
     }
 
     private void initView(){
@@ -111,6 +128,7 @@ public class PlayActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        heartHandler = null;
         if (orientationUtils != null)
             orientationUtils.releaseListener();
     }
@@ -132,7 +150,62 @@ public class PlayActivity extends AppCompatActivity {
                 finish();
                 overridePendingTransition(R.anim.abc_fade_in, R.anim.abc_fade_out);
             }
-        }, 500);
+        }, 200);
+    }
+
+    /**
+     * 延迟发送心跳请求
+     */
+    private void heartbeat(){
+        if(heartHandler == null){
+            return;
+        }
+        heartHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                requestHeartbeat();
+            }
+        }, heartbeatTime);
+    }
+
+    /**
+     * 视频播放心跳接口
+     */
+    private void requestHeartbeat() {
+        if(heartHandler == null){
+            return;
+        }
+        String url = ApiConfig.URL_GET_HEARTBEAT + "?channel=1&line=local&protocol=rtmp";
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                heartbeat();
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) {
+                heartbeat();
+                if (!response.isSuccessful()){
+                    return;
+                }
+                try {
+                    String body = response.body().string();
+                    Gson gson = new Gson();
+                    ChannelStream channelStream = gson.fromJson(body, ChannelStream.class);
+                    String url = channelStream.getEasyDarwin().getBody().getURL();
+                    if(url.contains("{host}")){
+                        url = url.replace("{host}", "110.16.71.162");
+                    }
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
 }

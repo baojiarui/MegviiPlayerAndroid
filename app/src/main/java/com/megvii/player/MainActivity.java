@@ -53,7 +53,10 @@ public class MainActivity extends BaseActivity {
         }
     });
 
-    public void requestVideoUrl() {
+    /**
+     * 获取视频地址接口
+     */
+    private void requestVideoUrl() {
         String url = ApiConfig.URL_GET_CHANNEL_STREAM + "?channel=1&protocol=RTMP";
         Request request = new Request.Builder()
                 .url(url)
@@ -68,9 +71,12 @@ public class MainActivity extends BaseActivity {
             }
 
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            public void onResponse(Call call, Response response) {
                 hideLoading();
-                if (response.isSuccessful()){
+                if (!response.isSuccessful()){
+                    return;
+                }
+                try {
                     String body = response.body().string();
                     Gson gson = new Gson();
                     ChannelStream channelStream = gson.fromJson(body, ChannelStream.class);
@@ -84,8 +90,9 @@ public class MainActivity extends BaseActivity {
                     bundle.putString("url", url);
                     msg.setData(bundle);
                     handler.sendMessage(msg);
+                }catch (Exception e){
+                    e.printStackTrace();
                 }
-
             }
         });
     }
