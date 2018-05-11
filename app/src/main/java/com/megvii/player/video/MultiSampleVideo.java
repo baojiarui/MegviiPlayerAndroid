@@ -16,7 +16,6 @@ import tv.danmaku.ijk.media.player.IjkLibLoader;
 
 /**
  * 多个同时播放的播放控件
- * Created by guoshuyu on 2018/1/31.
  */
 
 public class MultiSampleVideo extends SampleCoverVideo {

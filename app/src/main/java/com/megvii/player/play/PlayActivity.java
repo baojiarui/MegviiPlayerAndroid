@@ -5,16 +5,12 @@ import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v4.view.ViewCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.transition.Transition;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.ImageView;
 
 import com.megvii.player.R;
-import com.megvii.player.listener.OnTransitionListener;
 import com.megvii.player.model.SwitchVideoModel;
 import com.megvii.player.video.SampleVideo;
 import com.shuyu.gsyvideoplayer.GSYVideoManager;
@@ -25,20 +21,13 @@ import java.util.List;
 
 /**
  * 单独的视频播放页面
- * Created by shuyu on 2016/11/11.
  */
 public class PlayActivity extends AppCompatActivity {
 
-    public final static String IMG_TRANSITION = "IMG_TRANSITION";
-    public final static String TRANSITION = "TRANSITION";
+    public final static String INTENT_KEY_URL = "URL";
 
     private SampleVideo videoPlayer;
-
-    OrientationUtils orientationUtils;
-
-    private boolean isTransition;
-
-    private Transition transition;
+    private OrientationUtils orientationUtils;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,41 +36,35 @@ public class PlayActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams. FLAG_FULLSCREEN ,
                 WindowManager.LayoutParams. FLAG_FULLSCREEN);
         setContentView(R.layout.activity_play);
-        isTransition = getIntent().getBooleanExtra(TRANSITION, false);
         initView();
-        init();
+
+        String url = getIntent().getStringExtra(INTENT_KEY_URL);
+        initPlayer(url);
     }
 
     private void initView(){
         videoPlayer = findViewById(R.id.video_player);
     }
 
-    private void init() {
-        String source1 = "http://9890.vod.myqcloud.com/9890_4e292f9a3dd011e6b4078980237cc3d3.f20.mp4";
-        String name = "普通";
-        SwitchVideoModel switchVideoModel = new SwitchVideoModel(name, source1);
+    private void initPlayer(String url) {
+//        String source1 = "https://res.exexm.com/cw_145225549855002";
+//        String name = "普通";
+//        SwitchVideoModel switchVideoModel = new SwitchVideoModel(name, source1);
 
-        String source2 = "http://9890.vod.myqcloud.com/9890_4e292f9a3dd011e6b4078980237cc3d3.f30.mp4";
-        String name2 = "清晰";
-        SwitchVideoModel switchVideoModel2 = new SwitchVideoModel(name2, source2);
+//        String source1 = "http://9890.vod.myqcloud.com/9890_4e292f9a3dd011e6b4078980237cc3d3.f20.mp4";
+//        String name = "普通";
+//        SwitchVideoModel switchVideoModel = new SwitchVideoModel(name, source1);
+
+        String name = "普通";
+        SwitchVideoModel switchVideoModel = new SwitchVideoModel(name, url);
 
         List<SwitchVideoModel> list = new ArrayList<>();
         list.add(switchVideoModel);
-        list.add(switchVideoModel2);
 
-        videoPlayer.setUp(list, true, "测试视频");
-
-        //增加封面
-        ImageView imageView = new ImageView(this);
-        imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        imageView.setImageResource(R.mipmap.xxx);
-        //videoPlayer.setThumbImageView(imageView);
+        videoPlayer.setUp(list, true, "");
 
         //增加title
         videoPlayer.getTitleTextView().setVisibility(View.VISIBLE);
-        //videoPlayer.setShowPauseCover(false);
-
-        //videoPlayer.setSpeed(2f);
 
         //设置返回键
         videoPlayer.getBackButton().setVisibility(View.VISIBLE);
@@ -97,13 +80,6 @@ public class PlayActivity extends AppCompatActivity {
             }
         });
 
-        //videoPlayer.setBottomProgressBarDrawable(getResources().getDrawable(R.drawable.video_new_progress));
-        //videoPlayer.setDialogVolumeProgressBar(getResources().getDrawable(R.drawable.video_new_volume_progress_bg));
-        //videoPlayer.setDialogProgressBar(getResources().getDrawable(R.drawable.video_new_progress));
-        //videoPlayer.setBottomShowProgressBarDrawable(getResources().getDrawable(R.drawable.video_new_seekbar_progress),
-                //getResources().getDrawable(R.drawable.video_new_seekbar_thumb));
-        //videoPlayer.setDialogProgressColor(getResources().getColor(R.color.colorAccent), -11);
-
         //是否可以滑动调整
         videoPlayer.setIsTouchWiget(true);
 
@@ -115,8 +91,7 @@ public class PlayActivity extends AppCompatActivity {
             }
         });
 
-        //过渡动画
-        initTransition();
+        videoPlayer.startPlayLogic();
     }
 
 
@@ -150,46 +125,14 @@ public class PlayActivity extends AppCompatActivity {
         //释放所有
         videoPlayer.setVideoAllCallBack(null);
         GSYVideoManager.releaseAllVideos();
-        if (isTransition && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            super.onBackPressed();
-        } else {
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    finish();
-                    overridePendingTransition(R.anim.abc_fade_in, R.anim.abc_fade_out);
-                }
-            }, 500);
-        }
-    }
 
-
-    private void initTransition() {
-        if (isTransition && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            postponeEnterTransition();
-            ViewCompat.setTransitionName(videoPlayer, IMG_TRANSITION);
-            addTransitionListener();
-            startPostponedEnterTransition();
-        } else {
-            videoPlayer.startPlayLogic();
-        }
-    }
-
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private boolean addTransitionListener() {
-        transition = getWindow().getSharedElementEnterTransition();
-        if (transition != null) {
-            transition.addListener(new OnTransitionListener(){
-                @Override
-                public void onTransitionEnd(Transition transition) {
-                    super.onTransitionEnd(transition);
-                    videoPlayer.startPlayLogic();
-                    transition.removeListener(this);
-                }
-            });
-            return true;
-        }
-        return false;
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                finish();
+                overridePendingTransition(R.anim.abc_fade_in, R.anim.abc_fade_out);
+            }
+        }, 500);
     }
 
 }

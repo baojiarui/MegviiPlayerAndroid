@@ -8,7 +8,6 @@ import com.shuyu.gsyvideoplayer.video.NormalGSYVideoPlayer;
 
 /**
  * 自定义渲染控件
- * Created by guoshuyu on 2018/1/30.
  */
 
 public class CustomRenderVideoPlayer extends NormalGSYVideoPlayer {

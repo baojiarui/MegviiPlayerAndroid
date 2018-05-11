@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by shuyu on 2016/12/7.
  * 注意
  * 这个播放器的demo配置切换到全屏播放器
  * 这只是单纯的作为全屏播放显示，如果需要做大小屏幕切换，请记得在这里耶设置上视频全屏的需要的自定义配置

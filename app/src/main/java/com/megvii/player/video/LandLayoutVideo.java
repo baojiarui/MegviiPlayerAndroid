@@ -8,7 +8,6 @@ import com.megvii.player.R;
 import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer;
 
 /**
- * Created by shuyu on 2016/12/23.
  * CustomGSYVideoPlayer是试验中，建议使用的时候使用StandardGSYVideoPlayer
  */
 public class LandLayoutVideo extends StandardGSYVideoPlayer {

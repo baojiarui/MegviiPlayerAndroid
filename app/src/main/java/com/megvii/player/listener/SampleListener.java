@@ -3,7 +3,6 @@ package com.megvii.player.listener;
 import com.shuyu.gsyvideoplayer.listener.VideoAllCallBack;
 
 /**
- * Created by shuyu on 2016/11/23.
  */
 
 public class SampleListener implements VideoAllCallBack {

@@ -22,7 +22,6 @@ import java.io.File;
 
 /**
  * 自定义渲染层
- * Created by guoshuyu on 2018/1/30.
  */
 
 public class CustomTextureSurface extends SurfaceView implements IGSYRenderView, SurfaceHolder.Callback2, MeasureHelper.MeasureFormVideoParamsListener {

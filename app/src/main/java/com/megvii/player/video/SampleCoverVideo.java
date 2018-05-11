@@ -12,7 +12,6 @@ import com.shuyu.gsyvideoplayer.video.base.GSYBaseVideoPlayer;
 
 /**
  * 带封面
- * Created by guoshuyu on 2017/9/3.
  */
 
 public class SampleCoverVideo extends StandardGSYVideoPlayer {

@@ -16,7 +16,6 @@ import com.shuyu.gsyvideoplayer.video.base.GSYBaseVideoPlayer;
 
 /**
  * 进度图小图预览的另类实现
- * Created by shuyu on 2016/12/10.
  */
 
 public class PreViewGSYVideoPlayer extends NormalGSYVideoPlayer {

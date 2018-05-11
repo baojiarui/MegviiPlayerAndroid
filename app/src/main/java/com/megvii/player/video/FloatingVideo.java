@@ -18,7 +18,6 @@ import static com.shuyu.gsyvideoplayer.utils.CommonUtil.hideNavKey;
 
 /**
  * 多窗体下的悬浮窗页面支持Video
- * Created by shuyu on 2017/12/25.
  */
 
 public class FloatingVideo extends StandardGSYVideoPlayer {

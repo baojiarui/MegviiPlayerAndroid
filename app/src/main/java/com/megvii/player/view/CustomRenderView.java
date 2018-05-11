@@ -11,7 +11,6 @@ import com.shuyu.gsyvideoplayer.utils.MeasureHelper;
 
 /**
  * 自定义代理渲染层
- * Created by guoshuyu on 2018/1/30.
  */
 
 public class CustomRenderView extends GSYRenderView {

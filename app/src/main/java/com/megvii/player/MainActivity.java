@@ -3,43 +3,90 @@ package com.megvii.player;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.ActivityOptionsCompat;
-import android.support.v4.util.Pair;
-import android.support.v7.app.AppCompatActivity;
-import android.view.View;
+import android.os.Handler;
+import android.os.Message;
 
+import com.google.gson.Gson;
+import com.megvii.player.model.ChannelStream;
 import com.megvii.player.play.PlayActivity;
 
-public class MainActivity extends AppCompatActivity {
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+public class MainActivity extends BaseActivity {
+
+    private final OkHttpClient okHttpClient = new OkHttpClient();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-    }
 
-    public void play(View view){
-        goToVideoPlayer(this, view);
+        requestVideoUrl();
     }
 
     /**
      * 跳转到视频播放
      *
      * @param activity
-     * @param view
      */
-    public static void goToVideoPlayer(Activity activity, View view) {
+    public static void goToVideoPlayer(Activity activity, String url) {
         Intent intent = new Intent(activity, PlayActivity.class);
-        intent.putExtra(PlayActivity.TRANSITION, true);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            Pair pair = new Pair<>(view, PlayActivity.IMG_TRANSITION);
-            ActivityOptionsCompat activityOptions = ActivityOptionsCompat.makeSceneTransitionAnimation(
-                    activity, pair);
-            ActivityCompat.startActivity(activity, intent, activityOptions.toBundle());
-        } else {
+        intent.putExtra(PlayActivity.INTENT_KEY_URL, url);
             activity.startActivity(intent);
             activity.overridePendingTransition(R.anim.abc_fade_in, R.anim.abc_fade_out);
+    }
+
+    private Handler handler = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            String url = msg.getData().getString("url");
+            //url = "http://9890.vod.myqcloud.com/9890_4e292f9a3dd011e6b4078980237cc3d3.f20.mp4";
+            goToVideoPlayer(MainActivity.this, url);
+            finish();
+            return false;
         }
+    });
+
+    public void requestVideoUrl() {
+        String url = ApiConfig.URL_GET_CHANNEL_STREAM + "?channel=1&protocol=RTMP";
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        showLoading();
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                hideLoading();
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                hideLoading();
+                if (response.isSuccessful()){
+                    String body = response.body().string();
+                    Gson gson = new Gson();
+                    ChannelStream channelStream = gson.fromJson(body, ChannelStream.class);
+                    String url = channelStream.getEasyDarwin().getBody().getURL();
+                    if(url.contains("{host}")){
+                        url = url.replace("{host}", "110.16.71.162");
+                    }
+
+                    Message msg = new Message();
+                    Bundle bundle = new Bundle();
+                    bundle.putString("url", url);
+                    msg.setData(bundle);
+                    handler.sendMessage(msg);
+                }
+
+            }
+        });
     }
 }

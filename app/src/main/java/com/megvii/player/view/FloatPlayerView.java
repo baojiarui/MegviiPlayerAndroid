@@ -10,7 +10,6 @@ import com.megvii.player.video.FloatingVideo;
 
 /**
  * 适配了悬浮窗的view
- * Created by guoshuyu on 2017/12/25.
  */
 
 public class FloatPlayerView extends FrameLayout {

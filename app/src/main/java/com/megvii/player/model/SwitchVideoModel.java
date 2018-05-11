@@ -1,7 +1,6 @@
 package com.megvii.player.model;
 
 /**
- * Created by shuyu on 2016/12/7.
  */
 
 public class SwitchVideoModel {
