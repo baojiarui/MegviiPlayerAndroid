@@ -1,4 +1,4 @@
-package com.megvii.player;
+package com.megvii.demo;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -9,6 +9,8 @@ import android.os.Message;
 import com.google.gson.Gson;
 import com.megvii.player.model.ChannelStream;
 import com.megvii.player.play.PlayActivity;
+import com.megvii.player.ApiConfig;
+import com.megvii.player.BaseActivity;
 
 import java.io.IOException;
 
