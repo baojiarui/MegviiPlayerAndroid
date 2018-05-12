@@ -1,1 +1,1 @@
-include ':app', ':MegviiPlayerLib'
+include ':demo', ':MegviiPlayerLib'
