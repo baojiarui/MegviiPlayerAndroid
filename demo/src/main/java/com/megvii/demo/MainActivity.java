@@ -4,15 +4,18 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.View;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.megvii.demo.Utils.AuthUtil;
+import com.megvii.demo.Utils.AuthUtils;
+import com.megvii.demo.Utils.DateUtils;
 import com.megvii.demo.Utils.ToActivityUtils;
 import com.megvii.demo.adapter.CameraListAdapter;
 import com.megvii.demo.model.CameraData;
@@ -30,17 +33,23 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+/**
+ * player sample
+ */
 public class MainActivity extends BaseActivity {
 
     private final int MSG_WHAT_CAMERA_LIST = 0;
     private final int MSG_WHAT_NONCE = 1;
 
     private final OkHttpClient okHttpClient = new OkHttpClient();
+
+    /**摄像头列表*/
     private RecyclerView mRecyclerView;
     private CameraListAdapter mAdapter;
     private LinearLayoutManager mLayoutManager;
     private List<CameraData> mcameraList;
 
+    /**认证数据*/
     private NonceModel mNonceModel;
     private String mPlayAuth;
     private String mGetAuth;
@@ -55,8 +64,8 @@ public class MainActivity extends BaseActivity {
                 case MSG_WHAT_NONCE:
                     String nonce = mNonceModel.getReply().getNonce();
                     String realm = mNonceModel.getReply().getRealm();
-                    mGetAuth = AuthUtil.getAuth(realm, nonce, "GET");
-                    mPlayAuth = AuthUtil.getAuth(realm, nonce, "PLAY");
+                    mGetAuth = AuthUtils.getAuth(realm, nonce, "GET");
+                    mPlayAuth = AuthUtils.getAuth(realm, nonce, "PLAY");
                     requestCameraList();
                     break;
 
@@ -91,33 +100,41 @@ public class MainActivity extends BaseActivity {
                     return;
                 }
                 CameraData item = (CameraData) adapter.getItem(position);
-                showChoosePlay(item.getId());
+                String cameraId = item.getId().replace("{", "").replace("}", "");
+                showChoosePlay(cameraId, 0, 0);
             }
         });
     }
 
-    private void showChoosePlay(final String cameraId) {
+    /**
+     * 选择播放方式
+     * @param cameraId 摄像头ID
+     * @param pos 点播开始时间戳 直播默认0
+     * @param endPos 点播结束时间戳 直播默认0
+     */
+    private void showChoosePlay(final String cameraId, final long pos, final long endPos) {
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
         builder.setTitle("选择播放方式");
-        final String[] cities = {"RTSP", "HLS", "HTTP"};
-        builder.setItems(cities, new DialogInterface.OnClickListener() {
+        final String[] items = {PlayMode.RTSP.toString(), PlayMode.HLS.toString(), PlayMode.HTTP.toString()};
+        builder.setItems(items, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 String url = null;
                 switch (which){
                     case 0:
-                        url = getRtspStream(cameraId);
+                        url = getPlayStream(PlayMode.RTSP, cameraId, null, null);
                         break;
                     case 1:
-                        url = getHLSStream(cameraId);
+                        url = getPlayStream(PlayMode.HLS, cameraId, null, null);
                         break;
                     case 2:
-                        url = getHttpStream(cameraId);
+                        url = getPlayStream(PlayMode.HTTP, cameraId, DateUtils.getFormatTime(pos), DateUtils.getFormatTime(endPos));
                         break;
                     default:
                         break;
                 }
                 if(url != null){
+                    Log.i("PLAYURL", url);
                     ToActivityUtils.goToVideoPlayer(MainActivity.this, url);
                 }
             }
@@ -125,22 +142,42 @@ public class MainActivity extends BaseActivity {
         builder.show();
     }
 
-    /**获取RTMP播放地址*/
-    private String getRtspStream(String cameraId){
-        return ApiConfig.BASE_RTSP + cameraId + "?auth=" + mPlayAuth;
+    /**
+     * 获取播放地址
+     * @param mode 播放方式，参考PlayMode
+     * @param cameraId
+     * @param pos If present and not equal to <now>, specifies archive stream start position (as a string containing time in milliseconds since epoch, or a local time formatted like "YYYY-MM-DDTHH:mm:ss.zzz" - the format is auto-detected). Otherwise, LIVE stream is provided
+     * @param endPos If present, specifies archive stream end position (as a string containing time in milliseconds since epoch, or a local time formatted like "YYYY-MM-DDTHH:mm:ss.zzz" - the format is auto-detected). It is used only if "pos" parameter is present.
+     * @return
+     */
+    private String getPlayStream(PlayMode mode, String cameraId, @Nullable String pos, @Nullable String endPos){
+        String url = null;
+        switch (mode){
+            case RTSP:
+                url = ApiConfig.BASE_RTSP + cameraId + "?auth=" + mPlayAuth;
+                break;
+            case HLS:
+                url = ApiConfig.BASE_URL+ "hls/" + cameraId + ".m3u8?" + "auth=" + mGetAuth;
+                break;
+            case HTTP:
+                url = ApiConfig.BASE_URL+ "media/" + cameraId + ".webm?auth=" + mGetAuth;
+                break;
+            default:
+                break;
+        }
+        if(url == null){
+            return null;
+        }
+        if(pos != null){
+            url = url + "&pos=" + pos;
+        }
+        if(endPos != null){
+            url = url + "&endPos=" + endPos;
+        }
+        return url;
     }
 
-    /**获取HLS播放地址*/
-    private String getHLSStream(String cameraId){
-        return ApiConfig.BASE_URL+ "hls/" + cameraId + ".m3u8?" + "auth=" + mGetAuth;
-    }
-
-    /**获取HTTP播放地址*/
-    private String getHttpStream(String cameraId){
-        return ApiConfig.BASE_URL+ "media/" + cameraId + ".webm?auth=" + mGetAuth;
-    }
-
-    /**请求auth需要的信息*/
+    /**请求auth需要的Nonce信息*/
     private void requestNonce() {
         String url = ApiConfig.URL_GET_NONCE;
         Request request = new Request.Builder()
@@ -178,7 +215,7 @@ public class MainActivity extends BaseActivity {
         });
     }
 
-    /**请求摄像头列表*/
+    /**请求摄像头列表数据*/
     private void requestCameraList() {
         String url = ApiConfig.URL_GET_CAMERAS + "?login=" + ApiConfig.USER_NAME + "&password=" + ApiConfig.USER_PWD + "&auth=" + mGetAuth;
         Request request = new Request.Builder()

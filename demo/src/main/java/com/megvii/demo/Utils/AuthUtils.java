@@ -4,7 +4,7 @@ import com.megvii.player.ApiConfig;
 import com.megvii.player.util.Base64Utils;
 import com.megvii.player.util.MD5Utils;
 
-public class AuthUtil {
+public class AuthUtils {
 
     /**
      * Call GET /api/getNonce
