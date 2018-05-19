@@ -5,17 +5,25 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.view.View;
 
+import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.megvii.demo.adapter.CameraListAdapter;
+import com.megvii.demo.model.CameraData;
 import com.megvii.demo.util.Base64Utils;
 import com.megvii.demo.util.MD5Utils;
-import com.megvii.player.model.ChannelStream;
-import com.megvii.player.model.VideoPara;
+import com.megvii.player.model.NonceModel;
 import com.megvii.player.play.PlayActivity;
 import com.megvii.player.ApiConfig;
 import com.megvii.player.BaseActivity;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -25,15 +33,49 @@ import okhttp3.Response;
 
 public class MainActivity extends BaseActivity {
 
+    private final int MSG_WHAT_CAMERA_LIST = 0;
+    private final int MSG_WHAT_NONCE = 1;
+
     private final OkHttpClient okHttpClient = new OkHttpClient();
+    private RecyclerView mRecyclerView;
+    private CameraListAdapter mAdapter;
+    private LinearLayoutManager mLayoutManager;
+    private List<CameraData> mcameraList;
+
+    private NonceModel mNonceModel;
+    private String mPlayAuth;
+    private String mGetAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        initListView();
 
-        //requestVideoUrl();
         requestNonce();
+    }
+
+    /**
+     * 摄像头列表
+     */
+    private void initListView() {
+        mRecyclerView = findViewById(R.id.recycler_view);
+        mLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        mRecyclerView.setLayoutManager(mLayoutManager);
+        mAdapter = new CameraListAdapter(this);
+        mRecyclerView.setAdapter(mAdapter);
+
+        mAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
+            @Override
+            public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
+                if(mNonceModel == null){
+                    return;
+                }
+                CameraData item = (CameraData) adapter.getItem(position);
+                String url = getHLSStream(item.getId());
+                goToVideoPlayer(MainActivity.this, url);
+            }
+        });
     }
 
     /**
@@ -53,17 +95,15 @@ public class MainActivity extends BaseActivity {
         public boolean handleMessage(Message msg) {
             String url;
             switch (msg.what){
-                case 0:
-                    url = msg.getData().getString("url");
-                    //url = "http://9890.vod.myqcloud.com/9890_4e292f9a3dd011e6b4078980237cc3d3.f20.mp4";
-                    goToVideoPlayer(MainActivity.this, url);
-                    finish();
+                case MSG_WHAT_CAMERA_LIST:
+                    mAdapter.setNewData(mcameraList);
                     break;
-                case 1:
-                    String nonce = msg.getData().getString("nonce");
-                    String realm = msg.getData().getString("realm");
-                    url = getRtmpStream(realm, nonce);
-                    goToVideoPlayer(MainActivity.this, url);
+                case MSG_WHAT_NONCE:
+                    String nonce = mNonceModel.getReply().getNonce();
+                    String realm = mNonceModel.getReply().getRealm();
+                    mGetAuth = getAuth(realm, nonce, "GET");
+                    mPlayAuth = getAuth(realm, nonce, "PLAY");
+                    requestCameraList();
                     break;
 
                 default:
@@ -73,15 +113,16 @@ public class MainActivity extends BaseActivity {
         }
     });
 
-    private String getRtmpStream(String realm, String nonce){
-        String auth = getAuth(realm, nonce);
-//        return "rtsp://184.72.239.149/vod/mp4:BigBuckBunny_175k.mov";
-        return ApiConfig.BASE_RTSP + Constant.CAMERA_ID + "?auth=" + auth;// + "&resolution=240p" + "&stream=1";
+    private String getRtmpStream(String cameraId){
+        return ApiConfig.BASE_RTSP + cameraId + "?auth=" + mPlayAuth;
     }
 
-    private String getHLSStream(String realm, String nonce){
-        String auth = getAuth(realm, nonce);
-        return ApiConfig.BASE_URL+ "hls/" + Constant.CAMERA_ID + ".m3u?auth=" + auth;// + "&resolution=240p" + "&stream=1";
+    private String getHLSStream(String cameraId){
+        return ApiConfig.BASE_URL+ "hls/" + cameraId + ".m3u8?" + "auth=" + mGetAuth;
+    }
+
+    private String getHttpStream(String cameraId){
+        return ApiConfig.BASE_URL+ "media/" + cameraId + ".webm?auth=" + mGetAuth;
     }
 
 
@@ -97,15 +138,18 @@ public class MainActivity extends BaseActivity {
      Here auth_digest is the required authentication hash
      */
 
-    private String getAuth(String realm, String nonce){
+    private String getAuth(String realm, String nonce, String method){
         String authDigest;
         String digest = MD5Utils.getMD5(Constant.USER_NAME + ":" + realm + ":" + Constant.USER_PWD);
-        String partial_ha2 = MD5Utils.getMD5("PLAY:");
+        String partial_ha2 = MD5Utils.getMD5(method + ":");
         String simplified_ha2 = MD5Utils.getMD5(digest + ":" + nonce + ":" + partial_ha2);
         authDigest = Base64Utils.getBase64(Constant.USER_NAME+ ":" + nonce + ":" + simplified_ha2);
-        return authDigest;
+        return authDigest.trim();
     }
 
+    /**
+     * 请求auth需要的信息
+     */
     private void requestNonce() {
         String url = ApiConfig.URL_GET_NONCE;
         Request request = new Request.Builder()
@@ -129,14 +173,12 @@ public class MainActivity extends BaseActivity {
                 try {
                     String body = response.body().string();
                     Gson gson = new Gson();
-                    VideoPara videoPara = gson.fromJson(body, VideoPara.class);
+                    mNonceModel = gson.fromJson(body, NonceModel.class);
 
                     Message msg = new Message();
                     Bundle bundle = new Bundle();
-                    bundle.putString("nonce", videoPara.getReply().getNonce());
-                    bundle.putString("realm", videoPara.getReply().getRealm());
                     msg.setData(bundle);
-                    msg.what = 1;
+                    msg.what = MSG_WHAT_NONCE;
                     handler.sendMessage(msg);
                 }catch (Exception e){
                     e.printStackTrace();
@@ -144,4 +186,47 @@ public class MainActivity extends BaseActivity {
             }
         });
     }
+
+    /**
+     * 请求摄像头列表
+     */
+    private void requestCameraList() {
+        String url = ApiConfig.URL_GET_CAMERAS + "?login=" + Constant.USER_NAME + "&password=" + Constant.USER_PWD + "&auth=" + mGetAuth;
+
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        showLoading();
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                hideLoading();
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) {
+                hideLoading();
+                if (!response.isSuccessful()){
+                    return;
+                }
+                try {
+                    String body = response.body().string();
+                    Gson gson = new Gson();
+                    Type listType = new TypeToken<List<CameraData>>(){}.getType();
+                    mcameraList = gson.fromJson(body, listType);
+
+                    Message msg = new Message();
+                    Bundle bundle = new Bundle();
+                    msg.setData(bundle);
+                    msg.what = MSG_WHAT_CAMERA_LIST;
+                    handler.sendMessage(msg);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
 }
