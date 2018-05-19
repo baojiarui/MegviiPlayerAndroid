@@ -11,4 +11,7 @@ public class ApiConfig {
     /**获取摄像头列表*/
     public static final String URL_GET_CAMERAS = BASE_URL + "ec2/getCamerasEx";
 
+    public static final String USER_NAME = "admin";
+    public static final String USER_PWD = "admin";
+
 }

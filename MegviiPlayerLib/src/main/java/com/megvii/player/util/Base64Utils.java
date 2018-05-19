@@ -1,4 +1,4 @@
-package com.megvii.demo.util;
+package com.megvii.player.util;
 
 import android.util.Base64;
 
