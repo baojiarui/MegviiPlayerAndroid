@@ -1,7 +1,9 @@
 package com.megvii.player.video;
 
+import android.app.DownloadManager;
 import android.content.Context;
 import android.graphics.Matrix;
+import android.net.Uri;
 import android.os.Handler;
 import android.util.AttributeSet;
 import android.view.Surface;

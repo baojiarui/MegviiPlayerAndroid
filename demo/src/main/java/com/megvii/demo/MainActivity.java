@@ -1,10 +1,15 @@
 package com.megvii.demo;
 
+import android.Manifest;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -25,6 +30,7 @@ import com.megvii.player.BaseActivity;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 
 import okhttp3.Call;
@@ -37,6 +43,14 @@ import okhttp3.Response;
  * player sample
  */
 public class MainActivity extends BaseActivity {
+
+    private static final String[] REQUIRED_PERMISSION_LIST = new String[] {
+            Manifest.permission.INTERNET,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+    };
+    /**unrequest permissions*/
+    private List<String> missingPermission = new ArrayList<>();
 
     private final int MSG_WHAT_CAMERA_LIST = 0;
     private final int MSG_WHAT_NONCE = 1;
@@ -82,6 +96,31 @@ public class MainActivity extends BaseActivity {
         setContentView(R.layout.activity_main);
         initListView();
         requestNonce();
+
+        checkAndRequestPermissions();
+    }
+
+    /**
+     * Checks if there is any missing permissions, and
+     * requests runtime permission if needed.
+     */
+    private void checkAndRequestPermissions() {
+        if(missingPermission == null){
+            return;
+        }
+        // Check for permissions
+        for (String eachPermission : REQUIRED_PERMISSION_LIST) {
+            if (ContextCompat.checkSelfPermission(this, eachPermission) != PackageManager.PERMISSION_GRANTED) {
+                missingPermission.add(eachPermission);
+            }
+        }
+        if(missingPermission.size() > 0){
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                ActivityCompat.requestPermissions(this,
+                        missingPermission.toArray(new String[missingPermission.size()]),
+                        12345);
+            }
+        }
     }
 
     /**初始化摄像头列表UI*/
@@ -124,9 +163,11 @@ public class MainActivity extends BaseActivity {
                 switch (which){
                     case 0:
                         url = getPlayStream(PlayMode.RTSP, cameraId, 0, 0);
+                        ToActivityUtils.goToVideoPlayer(MainActivity.this, url);
                         break;
                     case 1:
                         url = getPlayStream(PlayMode.HLS, cameraId, 0, 0);
+                        ToActivityUtils.goToVideoPlayer(MainActivity.this, url);
                         break;
                     case 2:
                         //String cameraId = "681068eb-8026-9153-488a-75ebf913c673";
@@ -134,13 +175,10 @@ public class MainActivity extends BaseActivity {
                         long pos1 = DateUtils.getTimestamp("2018-05-21 11:10:00");
                         long pos2 = DateUtils.getTimestamp("2018-05-21 11:10:10");
                         url = getPlayStream(PlayMode.HTTP, cameraId, pos1, pos2);
+                        ToActivityUtils.goToVideoPlayer(MainActivity.this, url, true);
                         break;
                     default:
                         break;
-                }
-                if(url != null){
-                    Log.i("PLAYURL", url);
-                    ToActivityUtils.goToVideoPlayer(MainActivity.this, url);
                 }
             }
         });
@@ -165,13 +203,14 @@ public class MainActivity extends BaseActivity {
                 url = ApiConfig.BASE_URL+ "hls/" + cameraId + ".m3u8?" + "auth=" + mGetAuth;
                 break;
             case HTTP:
-                url = ApiConfig.BASE_URL+ "media/" + cameraId + ".webm?auth=" + mGetAuth;// + "&resolution=720*576";
+                url = ApiConfig.BASE_URL+ "media/" + cameraId + ".webm?";
                 if(pos > 0){
-                    url = url + "&pos=" + pos;
+                    url = url + "pos=" + pos;
                 }
                 if(endPos > 0){
                     url = url + "&endPos=" + endPos;
                 }
+                url = url + "&auth=" + mGetAuth;
                 break;
             default:
                 break;
