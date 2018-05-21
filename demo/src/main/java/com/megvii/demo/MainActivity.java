@@ -101,6 +101,7 @@ public class MainActivity extends BaseActivity {
                 }
                 CameraData item = (CameraData) adapter.getItem(position);
                 String cameraId = item.getId().replace("{", "").replace("}", "");
+
                 showChoosePlay(cameraId, 0, 0);
             }
         });
@@ -122,13 +123,17 @@ public class MainActivity extends BaseActivity {
                 String url = null;
                 switch (which){
                     case 0:
-                        url = getPlayStream(PlayMode.RTSP, cameraId, null, null);
+                        url = getPlayStream(PlayMode.RTSP, cameraId, 0, 0);
                         break;
                     case 1:
-                        url = getPlayStream(PlayMode.HLS, cameraId, null, null);
+                        url = getPlayStream(PlayMode.HLS, cameraId, 0, 0);
                         break;
                     case 2:
-                        url = getPlayStream(PlayMode.HTTP, cameraId, DateUtils.getFormatTime(pos), DateUtils.getFormatTime(endPos));
+                        //String cameraId = "681068eb-8026-9153-488a-75ebf913c673";
+                        String cameraId = "64a288b7-4ef2-f213-2375-8e6f1823dfff";
+                        long pos1 = DateUtils.getTimestamp("2018-05-21 11:10:00");
+                        long pos2 = DateUtils.getTimestamp("2018-05-21 11:10:10");
+                        url = getPlayStream(PlayMode.HTTP, cameraId, pos1, pos2);
                         break;
                     default:
                         break;
@@ -150,7 +155,7 @@ public class MainActivity extends BaseActivity {
      * @param endPos If present, specifies archive stream end position (as a string containing time in milliseconds since epoch, or a local time formatted like "YYYY-MM-DDTHH:mm:ss.zzz" - the format is auto-detected). It is used only if "pos" parameter is present.
      * @return
      */
-    private String getPlayStream(PlayMode mode, String cameraId, @Nullable String pos, @Nullable String endPos){
+    private String getPlayStream(PlayMode mode, String cameraId, long pos, long endPos){
         String url = null;
         switch (mode){
             case RTSP:
@@ -160,19 +165,19 @@ public class MainActivity extends BaseActivity {
                 url = ApiConfig.BASE_URL+ "hls/" + cameraId + ".m3u8?" + "auth=" + mGetAuth;
                 break;
             case HTTP:
-                url = ApiConfig.BASE_URL+ "media/" + cameraId + ".webm?auth=" + mGetAuth;
+                url = ApiConfig.BASE_URL+ "media/" + cameraId + ".webm?auth=" + mGetAuth;// + "&resolution=720*576";
+                if(pos > 0){
+                    url = url + "&pos=" + pos;
+                }
+                if(endPos > 0){
+                    url = url + "&endPos=" + endPos;
+                }
                 break;
             default:
                 break;
         }
         if(url == null){
             return null;
-        }
-        if(pos != null){
-            url = url + "&pos=" + pos;
-        }
-        if(endPos != null){
-            url = url + "&endPos=" + endPos;
         }
         return url;
     }
